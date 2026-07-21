@@ -1,0 +1,531 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>청기 백기 마우스 대결! (20초 타임어택)</title>
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Google Fonts (Noto Sans KR 적용) -->
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;700;900&display=swap" rel="stylesheet">
+  <style>
+    body {
+      font-family: 'Noto Sans KR', sans-serif;
+      user-select: none;
+      -webkit-user-select: none;
+    }
+    /* 깃발 휘날리는 키프레임 애니메이션 */
+    @keyframes wave {
+      0% { transform: rotate(0deg) skewY(0deg); }
+      25% { transform: rotate(4deg) skewY(2deg); }
+      50% { transform: rotate(-2deg) skewY(-1deg); }
+      75% { transform: rotate(3deg) skewY(1deg); }
+      100% { transform: rotate(0deg) skewY(0deg); }
+    }
+    .wave-animation {
+      animation: wave 0.6s ease-in-out infinite;
+    }
+    /* 클릭 시 튕기는 효과 */
+    .click-pop {
+      transition: transform 0.08s ease;
+    }
+    .click-pop:active {
+      transform: scale(0.95);
+    }
+  </style>
+</head>
+<body class="bg-slate-900 text-white min-h-screen flex flex-col justify-between overflow-hidden">
+
+  <!-- 헤더 영역 -->
+  <header class="bg-slate-800 border-b border-slate-700 py-4 px-6 flex justify-between items-center shadow-lg">
+    <div class="flex items-center space-x-3">
+      <div class="text-3xl">🚩</div>
+      <div>
+        <h1 class="text-xl font-bold tracking-wider text-blue-400">청기 백기! 마우스 대결</h1>
+        <p class="text-xs text-slate-400">마우스 좌클릭(청기) / 우클릭(백기)</p>
+      </div>
+    </div>
+    <div class="flex items-center space-x-6">
+      <!-- 최고 기록 -->
+      <div class="text-center bg-slate-950 px-4 py-1.5 rounded-full border border-slate-700">
+        <span class="text-xs text-slate-400 block font-semibold">BEST SCORE</span>
+        <span id="best-score" class="text-lg font-black text-yellow-400">0점</span>
+      </div>
+    </div>
+  </header>
+
+  <!-- 메인 게임 영역 -->
+  <main class="flex-1 flex flex-col items-center justify-center p-4 relative">
+    
+    <!-- 대기실 / 게임 시작 화면 -->
+    <div id="start-screen" class="absolute inset-0 bg-slate-900 bg-opacity-95 z-20 flex flex-col items-center justify-center p-6 text-center">
+      <div class="max-w-md w-full bg-slate-800 border border-slate-700 rounded-3xl p-8 shadow-2xl space-y-6">
+        <div class="relative w-32 h-32 mx-auto flex items-center justify-center bg-slate-900 rounded-full border-4 border-blue-500">
+          <span class="text-6xl animate-bounce">🚩</span>
+        </div>
+        <h2 class="text-3xl font-black text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-white">
+          20초 청기백기 타임어택
+        </h2>
+        
+        <div class="bg-slate-950 p-4 rounded-xl text-left text-sm space-y-2 text-slate-300 border border-slate-800">
+          <p class="font-bold text-white text-center mb-1">🎮 조작 가이드</p>
+          <p>🔵 <strong class="text-blue-400">마우스 왼쪽 클릭</strong> : 청기 올리기 / 내리기</p>
+          <p>⚪ <strong class="text-slate-100">마우스 오른쪽 클릭</strong> : 백기 올리기 / 내리기</p>
+          <p class="text-xs text-amber-400 text-center pt-2">※ 화면 어디든 클릭/우클릭하거나 하단 버튼을 터치해 플레이하세요!</p>
+        </div>
+
+        <button id="btn-start" class="w-full bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 text-white font-black py-4 px-8 rounded-2xl text-xl shadow-lg transform hover:-translate-y-1 active:translate-y-0 transition duration-150">
+          게임 시작하기!
+        </button>
+      </div>
+    </div>
+
+    <!-- 게임 오버 화면 -->
+    <div id="game-over-screen" class="absolute inset-0 bg-slate-950 bg-opacity-95 z-20 hidden flex flex-col items-center justify-center p-6 text-center">
+      <div class="max-w-md w-full bg-slate-800 border border-slate-700 rounded-3xl p-8 shadow-2xl space-y-6">
+        <div class="text-5xl">🏆</div>
+        <h2 class="text-3xl font-black text-red-400">시간 종료!</h2>
+        
+        <div class="bg-slate-900 p-6 rounded-2xl border border-slate-700">
+          <p class="text-slate-400 text-lg">최종 점수</p>
+          <p id="final-score" class="text-6xl font-black text-yellow-400 my-2">0점</p>
+          <p id="score-comment" class="text-sm text-blue-300 font-semibold"></p>
+        </div>
+
+        <div class="flex space-x-3">
+          <button id="btn-restart" class="flex-1 bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-600 hover:to-teal-700 text-white font-bold py-3.5 px-6 rounded-xl shadow-lg transition duration-150">
+            다시 도전하기
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- 인게임 레이아웃 -->
+    <div class="w-full max-w-4xl flex flex-col items-center space-y-6">
+      
+      <!-- 상단 정보바 (타이머 & 현재 스코어) -->
+      <div class="w-full flex justify-between items-center px-4 max-w-xl">
+        <!-- 타이머 -->
+        <div class="flex items-center space-x-3 bg-slate-800 px-4 py-2.5 rounded-2xl border border-slate-700 w-44">
+          <span class="text-2xl">⏳</span>
+          <div class="flex-1">
+            <span class="text-[10px] text-slate-400 block font-bold leading-none">남은 시간</span>
+            <span id="timer-text" class="text-xl font-black text-red-400">20.00초</span>
+          </div>
+        </div>
+
+        <!-- 현재 점수 -->
+        <div class="flex items-center space-x-3 bg-slate-800 px-4 py-2.5 rounded-2xl border border-slate-700 w-44 justify-end">
+          <div class="text-right flex-1">
+            <span class="text-[10px] text-slate-400 block font-bold leading-none">현재 점수</span>
+            <span id="current-score" class="text-xl font-black text-green-400">0점</span>
+          </div>
+          <span class="text-2xl">🔥</span>
+        </div>
+      </div>
+
+      <!-- 타임라인 비주얼 바 -->
+      <div class="w-full max-w-xl bg-slate-950 h-2.5 rounded-full overflow-hidden border border-slate-800">
+        <div id="timer-bar" class="bg-gradient-to-r from-red-500 to-amber-400 h-full w-full transition-all duration-100 ease-linear"></div>
+      </div>
+
+      <!-- 사회자의 명령판 -->
+      <div class="w-full max-w-xl bg-slate-800 border-2 border-indigo-500 rounded-3xl p-6 shadow-2xl relative overflow-hidden flex flex-col items-center justify-center min-h-[140px]">
+        <div class="absolute top-2 left-3 text-xs font-bold text-indigo-400 tracking-wider">사회자 목소리</div>
+        
+        <!-- 명령 텍스트 -->
+        <h3 id="command-text" class="text-3xl sm:text-4xl font-extrabold text-center text-yellow-300 leading-snug select-none">
+          마우스 클릭으로 시작을 대기하세요!
+        </h3>
+      </div>
+
+      <!-- 깃발 현황 판 (시각화) -->
+      <div class="w-full max-w-xl grid grid-cols-2 gap-6 pt-4">
+        
+        <!-- 청기 (좌클릭 대상) -->
+        <div id="flag-blue-zone" class="bg-slate-800/50 border border-blue-500/30 rounded-2xl p-6 flex flex-col items-center justify-center h-56 transition-all duration-200">
+          <div id="flag-blue" class="w-24 h-32 flex flex-col justify-end items-center origin-bottom transition-transform duration-200 translate-y-4">
+            <!-- 깃발 부분 -->
+            <div id="flag-blue-cloth" class="w-20 h-12 bg-blue-600 rounded-sm shadow-md transition-all duration-200 border border-blue-500" style="transform: scaleY(0.3); transform-origin: bottom;"></div>
+            <!-- 깃대 -->
+            <div class="w-2.5 h-24 bg-amber-800 rounded-sm shadow-inner relative">
+              <div class="absolute -top-2 left-1/2 -translate-x-1/2 w-4 h-4 bg-yellow-500 rounded-full"></div>
+            </div>
+          </div>
+          <p class="mt-4 font-black text-blue-400 text-lg tracking-wide">청기 (좌클릭)</p>
+          <span id="blue-state-text" class="text-xs text-slate-400 font-semibold">내려감</span>
+        </div>
+
+        <!-- 백기 (우클릭 대상) -->
+        <div id="flag-white-zone" class="bg-slate-800/50 border border-slate-500/30 rounded-2xl p-6 flex flex-col items-center justify-center h-56 transition-all duration-200">
+          <div id="flag-white" class="w-24 h-32 flex flex-col justify-end items-center origin-bottom transition-transform duration-200 translate-y-4">
+            <!-- 깃발 부분 - 시각 인지를 위해 은은한 회색 보더와 명암 적용 -->
+            <div id="flag-white-cloth" class="w-20 h-12 bg-slate-100 rounded-sm shadow-lg transition-all duration-200 border-2 border-slate-300" style="transform: scaleY(0.3); transform-origin: bottom;"></div>
+            <!-- 깃대 -->
+            <div class="w-2.5 h-24 bg-amber-800 rounded-sm shadow-inner relative">
+              <div class="absolute -top-2 left-1/2 -translate-x-1/2 w-4 h-4 bg-yellow-500 rounded-full"></div>
+            </div>
+          </div>
+          <p class="mt-4 font-black text-slate-200 text-lg tracking-wide">백기 (우클릭)</p>
+          <span id="white-state-text" class="text-xs text-slate-400 font-semibold">내려감</span>
+        </div>
+
+      </div>
+
+    </div>
+  </main>
+
+  <!-- 하단 터치 패널 (모바일 지원 & 클릭 영역 강화) -->
+  <footer class="bg-slate-950 border-t border-slate-800 py-6 px-4">
+    <div class="max-w-xl mx-auto grid grid-cols-2 gap-4">
+      <!-- 청기 터치/클릭 패널 -->
+      <button id="btn-blue-trigger" class="click-pop bg-blue-600 hover:bg-blue-500 active:bg-blue-700 py-4 px-6 rounded-2xl font-black text-white text-lg shadow-lg flex items-center justify-center space-x-2 border-b-4 border-blue-800">
+        <span>🔵 Blue (좌클릭)</span>
+      </button>
+
+      <!-- 백기 터치/클릭 패널 -->
+      <button id="btn-white-trigger" class="click-pop bg-slate-100 hover:bg-white active:bg-slate-200 py-4 px-6 rounded-2xl font-black text-slate-900 text-lg shadow-lg flex items-center justify-center space-x-2 border-b-4 border-slate-300">
+        <span>⚪ White (우클릭)</span>
+      </button>
+    </div>
+    <p class="text-center text-[11px] text-slate-500 mt-3 font-semibold">
+      마우스 우클릭 시 브라우저 기본 메뉴가 차단되어 백기가 완전히 오르고 내립니다. 안심하고 연타하세요!
+    </p>
+  </footer>
+
+  <!-- 효과음용 Web Audio API 스크립트 -->
+  <script>
+    let audioCtx = null;
+
+    function initAudio() {
+      if (!audioCtx) {
+        audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      }
+    }
+
+    // 소리 재생 유틸리티
+    function playTone(freq, type, duration) {
+      if (!audioCtx) return;
+      try {
+        const osc = audioCtx.createOscillator();
+        const gainNode = audioCtx.createGain();
+        osc.connect(gainNode);
+        gainNode.connect(audioCtx.destination);
+        
+        osc.type = type;
+        osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
+        
+        gainNode.gain.setValueAtTime(0.12, audioCtx.currentTime);
+        gainNode.gain.exponentialRampToValueAtTime(0.00001, audioCtx.currentTime + duration);
+        
+        osc.start();
+        osc.stop(audioCtx.currentTime + duration);
+      } catch (e) {
+        console.log("Audio play error", e);
+      }
+    }
+
+    function playSuccessSound() {
+      initAudio();
+      playTone(523.25, 'sine', 0.1); // 도
+      setTimeout(() => playTone(659.25, 'sine', 0.15), 80); // 미
+    }
+
+    function playFailSound() {
+      initAudio();
+      playTone(180, 'sawtooth', 0.25);
+    }
+
+    function playGameOverSound() {
+      initAudio();
+      playTone(392, 'square', 0.15);
+      setTimeout(() => playTone(349.23, 'square', 0.15), 150);
+      setTimeout(() => playTone(293.66, 'square', 0.3), 300);
+    }
+  </script>
+
+  <!-- 핵심 게임 로직 -->
+  <script>
+    // 게임 변수
+    let score = 0;
+    let highScore = 0;
+    let timeLeft = 20.0;
+    let isPlaying = false;
+    let timerInterval = null;
+
+    // 깃발 실제 상태 (true: 올라감, false: 내려감)
+    let blueFlagUp = false;
+    let whiteFlagUp = false;
+
+    // 현재 수행해야 하는 목표 상태 정의
+    let targetBlueUp = false;
+    let targetWhiteUp = false;
+
+    // 명령 데이터 목록
+    const commands = [
+      { text: "청기 올려!", blue: true, white: null }, 
+      { text: "백기 올려!", blue: null, white: true },
+      { text: "청기 내려!", blue: false, white: null },
+      { text: "백기 내려!", blue: null, white: false },
+      { text: "청기 올리고 백기 올려!", blue: true, white: true },
+      { text: "청기 내리고 백기 내려!", blue: false, white: false },
+      { text: "청기 올리지 말고 백기 올려!", blue: false, white: true },
+      { text: "백기 올리지 말고 청기 올려!", blue: true, white: false },
+    ];
+
+    // DOM 요소 캐싱
+    const startScreen = document.getElementById('start-screen');
+    const gameOverScreen = document.getElementById('game-over-screen');
+    const btnStart = document.getElementById('btn-start');
+    const btnRestart = document.getElementById('btn-restart');
+    const timerText = document.getElementById('timer-text');
+    const timerBar = document.getElementById('timer-bar');
+    const currentScoreText = document.getElementById('current-score');
+    const bestScoreText = document.getElementById('best-score');
+    const finalScoreText = document.getElementById('final-score');
+    const scoreComment = document.getElementById('score-comment');
+    const commandText = document.getElementById('command-text');
+
+    // 깃발 엘리먼트
+    const flagBlue = document.getElementById('flag-blue');
+    const flagBlueCloth = document.getElementById('flag-blue-cloth');
+    const flagBlueZone = document.getElementById('flag-blue-zone');
+    const blueStateText = document.getElementById('blue-state-text');
+
+    const flagWhite = document.getElementById('flag-white');
+    const flagWhiteCloth = document.getElementById('flag-white-cloth');
+    const flagWhiteZone = document.getElementById('flag-white-zone');
+    const whiteStateText = document.getElementById('white-state-text');
+
+    // 컨트롤 버튼
+    const btnBlueTrigger = document.getElementById('btn-blue-trigger');
+    const btnWhiteTrigger = document.getElementById('btn-white-trigger');
+
+    // 브라우저 마우스 오른쪽 클릭 방지 (중요!)
+    window.addEventListener('contextmenu', function(e) {
+      if (isPlaying) {
+        e.preventDefault();
+        triggerWhiteAction();
+      }
+    });
+
+    // 전체 화면 마우스 클릭 바인딩
+    document.addEventListener('mousedown', function(e) {
+      if (!isPlaying) return;
+      
+      // 터치 전용 버튼 클릭은 중복 처리 방지를 위해 여기서 제외
+      if (e.target.closest('#btn-blue-trigger') || e.target.closest('#btn-white-trigger')) {
+        return;
+      }
+
+      if (e.button === 0) { // 좌클릭 -> 청기
+        triggerBlueAction();
+      } else if (e.button === 2) { // 우클릭 -> 백기
+        e.preventDefault();
+        triggerWhiteAction();
+      }
+    });
+
+    // 버튼 트리거 연동 (모바일 및 패드용)
+    btnBlueTrigger.addEventListener('click', (e) => {
+      e.stopPropagation();
+      triggerBlueAction();
+    });
+    btnWhiteTrigger.addEventListener('click', (e) => {
+      e.stopPropagation();
+      triggerWhiteAction();
+    });
+
+    // 청기 액션 수행
+    function triggerBlueAction() {
+      if (!isPlaying) return;
+      initAudio();
+      blueFlagUp = !blueFlagUp;
+      updateFlagVisuals();
+      checkMatch();
+    }
+
+    // 백기 액션 수행
+    function triggerWhiteAction() {
+      if (!isPlaying) return;
+      initAudio();
+      whiteFlagUp = !whiteFlagUp;
+      updateFlagVisuals();
+      checkMatch();
+    }
+
+    // 깃발 시각적 업데이트 (휘날리는 애니메이션 추가 연동)
+    function updateFlagVisuals() {
+      // 청기 비주얼
+      if (blueFlagUp) {
+        flagBlue.style.transform = "translateY(-24px) rotate(-3deg)";
+        flagBlueCloth.style.transform = "scaleY(1)";
+        flagBlueCloth.classList.add("wave-animation");
+        blueStateText.innerText = "올라감";
+        blueStateText.className = "text-xs text-blue-400 font-bold";
+        flagBlueZone.classList.add("bg-blue-950/40");
+      } else {
+        flagBlue.style.transform = "translateY(16px) rotate(0deg)";
+        flagBlueCloth.style.transform = "scaleY(0.3)";
+        flagBlueCloth.classList.remove("wave-animation");
+        blueStateText.innerText = "내려감";
+        blueStateText.className = "text-xs text-slate-400 font-semibold";
+        flagBlueZone.classList.remove("bg-blue-950/40");
+      }
+
+      // 백기 비주얼 (완전하게 보이고 작동하도록 개선)
+      if (whiteFlagUp) {
+        flagWhite.style.transform = "translateY(-24px) rotate(3deg)";
+        flagWhiteCloth.style.transform = "scaleY(1)";
+        flagWhiteCloth.classList.add("wave-animation");
+        whiteStateText.innerText = "올라감";
+        whiteStateText.className = "text-xs text-slate-100 font-bold";
+        flagWhiteZone.classList.add("bg-slate-800/80");
+      } else {
+        flagWhite.style.transform = "translateY(16px) rotate(0deg)";
+        flagWhiteCloth.style.transform = "scaleY(0.3)";
+        flagWhiteCloth.classList.remove("wave-animation");
+        whiteStateText.innerText = "내려감";
+        whiteStateText.className = "text-xs text-slate-400 font-semibold";
+        flagWhiteZone.classList.remove("bg-slate-800/80");
+      }
+    }
+
+    // 새 명령 생성
+    function generateNextCommand() {
+      const randomIndex = Math.floor(Math.random() * commands.length);
+      const cmd = commands[randomIndex];
+      
+      if (cmd.blue !== null) {
+        targetBlueUp = cmd.blue;
+      } else {
+        targetBlueUp = blueFlagUp;
+      }
+
+      if (cmd.white !== null) {
+        targetWhiteUp = cmd.white;
+      } else {
+        targetWhiteUp = whiteFlagUp;
+      }
+
+      // 이미 우연히 상태가 일치해버려서 넘어가지는 것 방지
+      if (targetBlueUp === blueFlagUp && targetWhiteUp === whiteFlagUp) {
+        if (Math.random() > 0.5) {
+          targetBlueUp = !blueFlagUp;
+        } else {
+          targetWhiteUp = !whiteFlagUp;
+        }
+        
+        let text = "";
+        if (targetBlueUp !== blueFlagUp && targetWhiteUp !== whiteFlagUp) {
+          text = `청기 ${targetBlueUp ? '올리고' : '내리고'} 백기 ${targetWhiteUp ? '올려!' : '내려!'}`;
+        } else if (targetBlueUp !== blueFlagUp) {
+          text = `청기 ${targetBlueUp ? '올려!' : '내려!'}`;
+        } else {
+          text = `백기 ${targetWhiteUp ? '올려!' : '내려!'}`;
+        }
+        commandText.innerText = text;
+      } else {
+        commandText.innerText = cmd.text;
+      }
+
+      // 지시어 갱신 효과음/애니메이션
+      commandText.classList.remove('scale-100');
+      commandText.classList.add('scale-105', 'text-amber-300');
+      setTimeout(() => {
+        commandText.classList.remove('scale-105', 'text-amber-300');
+        commandText.classList.add('scale-100');
+      }, 100);
+    }
+
+    // 목표 체크 및 다음 미션 부여
+    function checkMatch() {
+      if (blueFlagUp === targetBlueUp && whiteFlagUp === targetWhiteUp) {
+        score++;
+        currentScoreText.innerText = `${score}점`;
+        playSuccessSound();
+        generateNextCommand();
+      }
+    }
+
+    // 게임 시작 함수
+    function startGame() {
+      initAudio();
+      score = 0;
+      timeLeft = 20.0;
+      isPlaying = true;
+      blueFlagUp = false;
+      whiteFlagUp = false;
+      
+      currentScoreText.innerText = "0점";
+      timerText.innerText = "20.00초";
+      timerBar.style.width = "100%";
+      timerBar.className = "bg-gradient-to-r from-green-500 to-blue-500 h-full w-full transition-all duration-100 ease-linear";
+
+      updateFlagVisuals();
+      startScreen.classList.add('hidden');
+      gameOverScreen.classList.add('hidden');
+
+      generateNextCommand();
+
+      const startTime = Date.now();
+      const duration = 20000;
+
+      timerInterval = setInterval(() => {
+        const elapsedTime = Date.now() - startTime;
+        timeLeft = Math.max(0, (duration - elapsedTime) / 1000);
+        
+        timerText.innerText = `${timeLeft.toFixed(2)}초`;
+        
+        const percentage = (timeLeft / 20) * 100;
+        timerBar.style.width = `${percentage}%`;
+
+        if (timeLeft <= 5) {
+          timerBar.className = "bg-gradient-to-r from-red-600 to-rose-500 h-full transition-all duration-100 ease-linear";
+          timerText.className = "text-xl font-black text-red-500 animate-pulse";
+        } else if (timeLeft <= 10) {
+          timerBar.className = "bg-gradient-to-r from-yellow-500 to-amber-500 h-full transition-all duration-100 ease-linear";
+          timerText.className = "text-xl font-black text-yellow-500";
+        }
+
+        if (timeLeft <= 0) {
+          endGame();
+        }
+      }, 30);
+    }
+
+    // 게임 종료
+    function endGame() {
+      isPlaying = false;
+      clearInterval(timerInterval);
+      playGameOverSound();
+
+      if (score > highScore) {
+        highScore = score;
+        bestScoreText.innerText = `${highScore}점`;
+      }
+
+      finalScoreText.innerText = `${score}점`;
+      
+      let comment = "";
+      if (score === 0) {
+        comment = "화면 빈 곳을 마우스 클릭/우클릭하여 신나게 흔들어보세요!";
+      } else if (score < 10) {
+        comment = "속도를 조금만 더 내볼까요? 화이팅!";
+      } else if (score < 20) {
+        comment = "탁월한 반사 신경입니다! 20점 고지를 돌파해보세요!";
+      } else if (score < 30) {
+        comment = "대단한 피지컬입니다! 마우스 클릭의 황제시군요!";
+      } else {
+        comment = "신의 영역에 도달했습니다! 기네스북 등재 가능 수준!";
+      }
+      scoreComment.innerText = comment;
+
+      gameOverScreen.classList.remove('hidden');
+    }
+
+    btnStart.addEventListener('click', startGame);
+    btnRestart.addEventListener('click', startGame);
+  </script>
+</body>
+</html>
